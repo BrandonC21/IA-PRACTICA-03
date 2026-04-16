@@ -64,66 +64,76 @@ class AgenteLogico:
         self.pos_actual = (0, 0)
         self.visitados = set()
         self.seguras = set([(0,0)])
-        self.kb = {(r, c): {'p_pozo': 'u', 'p_wumpus': 'u'} 
+        self.kb = {(r, c): {'p_pozo': 'u', 'p_wumpus': 'u' , 'segura': None} 
                    for r in range(size) for c in range(size)}
-        self.wumpusV = True 
-        self.flechaV = True
-        self.sospechosos = []
-    """
-    def integrar_percepcion(self, r, c, perc):
-        self.visitados.add((r, c))
-        self.seguras.add((r, c))
-        adjacentes = mundo.get_adjacentes(r, c)
-
-        # Lógica de inferencia
-        if not perc['brisa'] and not perc['hedor']:
-            for nr, nc in adjacentes:
-                self.seguras.add((nr, nc))
-        
-        print(f"Percepciones en {r,c}: {'Brisa ' if perc['brisa'] else ''}{'Hedor ' if perc['hedor'] else ''}{'Resplandor' if perc['resplandor'] else ''}")
-    """
+        self.wumpus_muerto = False
+       
+     
+       
+    
     def integrar_percepcion(self, r, c, perc):
         self.visitados.add((r,c))
-        adjacentes = mundo.get_adjacentes(r,c) 
-        #Verificamos que no hay brisa
+        adjacentes = mundo.get_adjacentes(r,c)
+
+        """ Definicion de logica 
+            Reglas con persepcion 
+        """
+        #Verificamos que no hay brisa, por lo tanto no existe un pozo
         if not perc['brisa']:
             for nr, nc in adjacentes:
                 self.kb[(nr, nc)]['p_pozo'] = False      
-        #Verificamos que no hay hedor
+
+        #Verificamos que no hay hedor, por lo tanto no existe un Wuampus
         if not perc['hedor']:
             for nr, nc in adjacentes:
                 self.kb[(nr, nc)]['p_wumpus'] = False
         # Evaluamos todos los vecinos que no contengan un pozo o wunpus
+
+        """ Reglas con persepcion """
+        #Verificamos si existe una brisa, por lo tanto hay un pozo 
+        if perc['brisa']:
+            for nr, nc in adjacentes:
+                if self.kb[(nr,nc)]['p_pozo'] == 'u':
+                    self.kb[(nr,nc)]['p_pozo'] = True
+
+        # Buscar el wuampus para lanzar la flecha
+        if perc['hedor'] and not self.wumpus_muerto:
+            sospechosos_wuampus = []
+            #obtner los posibles sospechosos
+            for nr,nc in adjacentes:
+                if self.kb[(nr, nc)]['p_wumpus'] != False:
+                    sospechosos_wuampus.append((nr,nc))
+            #Filtrar solo los posibles
+            """
+            posibles_wampus = []
+            for pos in sospechosos_wuampus:
+                if self.kb[pos]['p_wumpus'] == True:
+                    posibles_wampus.append(pos)
+            """
+            # Si hay uno → disparar
+            if len(sospechosos_wuampus) == 1:
+                pos_wumpus = sospechosos_wuampus[0]
+                print("Lanzar flecha\n") 
+                print("Wumpus eliminado casilla segura......!")
+                self.kb[pos_wumpus]['p_wumpus'] = False
+                self.wumpus_muerto = True
+                #Ahora es una casilla segura
+                self.seguras.add(pos_wumpus)
+                self.kb[pos_wumpus]['segura'] = True
+               
+    
+        """ Motor de inferencia"""
         for nr, nc in adjacentes:
             if self.kb[(nr, nc)]['p_pozo'] == False and self.kb[(nr, nc)]['p_wumpus'] == False:
+                self.kb[(nr,nc)]['segura'] = True
                 self.seguras.add((nr, nc))
-                
-        percepciones_str = [k for k, v in perc.items() if v]
-        print(f"Percepciones en {r,c}: {', '.join(percepciones_str) if percepciones_str else 'Ninguna'}")
-    
-    #Gestión de la Flecha
-    def flecha(self, r,c ,perc):
-        self.visitados.add((r,c))
-        adjacentes = mundo.get_adjacentes(r,c)
-        #Verificamos hedor y brisa
-        if not perc['brisa']:
-            for nr, nc in adjacentes:
-                self.kb[(nr, nc)]['p_pozo'] = False      
-        #Verificamos que no hay hedor
-        if not perc['hedor']:
-            for nr, nc in adjacentes:
-                self.kb[(nr, nc)]['p_wumpus'] = False
         
-        #Verificamos si el esta el wumpus vivo y hay un hedor
-        if perc['hedor'] and self.wumpusV:
-            for nr, nc in adjacentes:
-                if self.kb[(nr,nc)]['p_wumpus'] == True:
-                    self.sospechosos.append((nr,nc))
 
+                
+        print(f"Percepciones en {r,c}: {'Brisa ' if perc['brisa'] else ''}{'Hedor ' if perc['hedor'] else ''}{'Resplandor' if perc['resplandor'] else ''}")
+    
 
-
-
-
+       
     def planificar_siguiente_paso(self):
         opciones = [p for p in self.seguras if p not in self.visitados]
         if opciones:
